@@ -52,33 +52,33 @@ classdef Robot
             frames = zeros(4,4,robot.dof);
             n = robot.dof;
             
-            dh_parameters = robot.dh_parameters;
+            %dh_parameters = robot.dh_parameters;
             % The transform from the base of link 'i' to the base frame (H^0_i)
             % is given by the 3x3 matrix frames(:,:,i).
             
             % The transform from the end effector to the base frame (H^0_i) is
             % given by the 3x3 matrix frames(:,:,end).
                 
-            a1 = dh_parameters(1, 1);
-            alpha1 = dh_parameters(1, 2);
-            d1 = dh_parameters(1, 3);
-            theta1 = dh_parameters(1, 4) + thetas(1);
+            a1 = robot.dh_parameters(1, 1);
+            alpha1 = robot.dh_parameters(1, 2);
+            d1 = robot.dh_parameters(1, 3);
+            theta1 = robot.dh_parameters(1, 4) + thetas(1);
             
             frames(:,:,1) = [cos(theta1) -sin(theta1)*cos(alpha1) sin(theta1)*sin(alpha1) a1*cos(theta1); 
                 sin(theta1) cos(theta1)*cos(alpha1) -cos(theta1)*sin(alpha1) a1*sin(theta1); 
-                0 sin(alpha1) cos(alpha1) d1; 
+                0 sin(alpha1) cos(alpha1) d1;
                 0 0 0 1];
             
             for i = 2:n
-                a = dh_parameters(i, 1);
-                alpha = dh_parameters(i, 2);
-                d = dh_parameters(i, 3);
-                theta = dh_parameters(i, 4) + thetas(i);
+                a = robot.dh_parameters(i, 1);
+                alpha = robot.dh_parameters(i, 2);
+                d = robot.dh_parameters(i, 3);
+                theta = robot.dh_parameters(i, 4) + thetas(i);
             
                 currFrame = [cos(theta) -sin(theta)*cos(alpha) sin(theta)*sin(alpha) a*cos(theta); 
-                sin(theta) cos(theta)*cos(alpha) -cos(theta)*sin(alpha) a*sin(theta); 
-                0 sin(alpha) cos(alpha) d; 
-                0 0 0 1];
+                    sin(theta) cos(theta)*cos(alpha) -cos(theta)*sin(alpha) a*sin(theta); 
+                    0 sin(alpha) cos(alpha) d; 
+                    0 0 0 1];
                 frames(:,:,i) = frames(:,:,i-1) * currFrame;
             end
         end
@@ -303,7 +303,7 @@ classdef Robot
                 % 'robot.end_effector' function, and the 'robot.jacobians'
                 % function to help solve this problem
                 jacobians = robot.jacobians_numerical(thetas);
-                jacobianEnd = jacobians(:,:,robot.dof+1);
+                jacobianEnd = jacobians(:,:,robot.dof);
                 endEff = robot.end_effector(thetas);
                 endEff1 = [0; 0];
                 endEff2 = [0; 0];
@@ -371,6 +371,7 @@ classdef Robot
             % inverse kinematics
             % Note: Kinematics Decoupling might be very useful for this
             % question
+            % goal_position: [x; y; z; psi; theta; phi]
             
             % Make sure that all the parameters are what we're expecting.
             % This helps catch typos and other lovely bugs.
@@ -378,10 +379,25 @@ classdef Robot
             %    error('Invalid initial_thetas: Should be a column vector matching robot DOF count, is %dx%d.', size(initial_thetas, 1), size(initial_thetas, 2));
             %end
             
+            v1 = robot.dh_parameters(2,1); %330.3
+            v2 = robot.dh_parameters(3,1); %254.1
             thetas = zeros(robot.dof, 1);
+            xrr = sqrt((goal_position(2) - 121.05 * cos(thetas(1)))^2 + ...
+                    ((goal_position(1)) + 121.05 * sin(thetas(1)))^2)
+            zrr = goal_position(3) - 56.05 + 74.05 + 139.7
             
             % --------------- BEGIN STUDENT SECTION ----------------------------------
-            
+            %thetas(1) = atan2(goal_position(2),goal_position(1)) - ...
+            %            asin(121.05/sqrt(goal_position(1)^2 + goal_position(2)^2));
+            num1 = (xrr^2 + zrr^2 - v1^2 - v2^2)/(2*v1*v2)
+%             num1 = ((goal_position(3) + 157.7)^2 + goal_position(1)^2 - v1^2 - v2^2)/(2*v1*v2)
+            thetas(3) = acos(num1);
+%             thetas(2) = atan2(yrr,xrr) - atan2(v2*sin(thetas(3)),(v1+v2*cos(thetas(3))));
+%             thetas(1) = atan2(goal_position(2),goal_position(1)) - ...
+%                         atan2(121.05, v1*thetas(2)+v2*(thetas(2) + thetas(3)));
+%             thetas(4) = -pi/2 - thetas(2) - thetas(3);
+%             thetas(5) = 0;
+
             
             % --------------- END STUDENT SECTION ------------------------------------
         end
