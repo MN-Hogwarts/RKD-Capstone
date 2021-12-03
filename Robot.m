@@ -103,10 +103,10 @@ classdef Robot
             x = H_0_ee(1,4,end);
             y = H_0_ee(2,4,end);
             z = H_0_ee(3,4,end);
-            angles = rotm2eul(H_0_ee(1:3, 1:3)); % download the library later
+            angles = rotm2eul(H_0_ee(1:3, 1:3)); 
             % --------------- END STUDENT SECTION ------------------------------------
             % Pack them up nicely.
-            ee = [x; y; z; angles(3); angles(2); angles(1)];
+            ee = [x; y; z; angles(1); angles(2); angles(3)];
         end
         
         % Shorthand for returning the end effector position and orientation.
@@ -156,12 +156,12 @@ classdef Robot
                     gyRight = right(2, 4, frame);
                     gzLeft = left(2, 4, frame);
                     gzRight = right(2, 4, frame);
-                    gPhiLeft = leftAngles(1);
-                    gPhiRight = rightAngles(1);
+                    gPhiLeft = leftAngles(3);
+                    gPhiRight = rightAngles(3);
                     gThetaLeft = leftAngles(2);
                     gThetaRight = rightAngles(2);
-                    gPsiLeft = leftAngles(3);
-                    gPsiRight = rightAngles(3);
+                    gPsiLeft = leftAngles(1);
+                    gPsiRight = rightAngles(1);
                 
                     jacobians(1, joint, frame) = (gxLeft - gxRight)/(2*epsilon);
                     
@@ -219,12 +219,12 @@ classdef Robot
                     gyRight = right(2, 4, frame);
                     gzLeft = left(2, 4, frame);
                     gzRight = right(2, 4, frame);
-                    gPhiLeft = leftAngles(1);
-                    gPhiRight = rightAngles(1);
+                    gPhiLeft = leftAngles(3);
+                    gPhiRight = rightAngles(3);
                     gThetaLeft = leftAngles(2);
                     gThetaRight = rightAngles(2);
-                    gPsiLeft = leftAngles(3);
-                    gPsiRight = rightAngles(3);
+                    gPsiLeft = leftAngles(1);
+                    gPsiRight = rightAngles(1);
                 
                     jacobians(1, joint, frame) = (gxLeft - gxRight)/(2*epsilon);
                     
@@ -302,29 +302,23 @@ classdef Robot
                 % HINT use the answer for theory question 2, the
                 % 'robot.end_effector' function, and the 'robot.jacobians'
                 % function to help solve this problem
+                
                 jacobians = robot.jacobians_numerical(thetas);
                 jacobianEnd = jacobians(:,:,robot.dof);
-                endEff = robot.end_effector(thetas);
-                endEff1 = [0; 0];
-                endEff2 = [0; 0];
+                endEff = [0; 0; 0; 0; 0; 0];
                 ee = robot.end_effector(thetas);
-                if (size(goal_position, 1) == 2) % [x;y] goal
-                    %cost_gradient = zeros(robot.dof, 1);
-                    endEff1(1) = ee(1);
-                    endEff1(2) = ee(2);
-                    cost_gradient = (transpose(jacobianEnd(1:2,:))*(endEff1 - goal_position));
-                else % [x;y;theta] goal
-                    %cost_gradient = zeros(robot.dof, 1);
-                    endEff2(1) = ee(1);
-                    endEff2(2) = ee(2);
-                    endEff2(3) = ee(3);
-                    cost_gradient = (transpose(jacobianEnd)*(endEff2 - goal_position));
-                end
+                endEff(1) = ee(1);
+                endEff(2) = ee(2);
+                endEff(3) = ee(3);
+                endEff(4) = ee(4);
+                endEff(5) = ee(5);
+                endEff(6) = ee(6);
+                endEff
+                cost_gradient = (transpose(jacobianEnd)*(endEff - goal_position))
+                
                 % Update 'thetas'
-                % TODO
                 thetas = thetas - step_size*cost_gradient;
                 % Check stopping condition, and return if it is met.
-                % TODO
                 if (norm(cost_gradient) < stopping_condition)
                     return
                 end
@@ -347,7 +341,6 @@ classdef Robot
             % Returns the joint angles which minimize a simple squared-distance
             % cost function. Using built in optimization (fmincon)
             
-            
             % Make sure that all the parameters are what we're expecting.
             % This helps catch typos and other lovely bugs.
             if size(initial_thetas, 1) ~= robot.dof || size(initial_thetas, 2) ~= 1
@@ -359,9 +352,7 @@ classdef Robot
             
             fun = @(thetas)robot.cost_function(thetas, goal_position);
             
-            
             % --------------- BEGIN STUDENT SECTION ----------------------------------
-            
             
             % --------------- END STUDENT SECTION ------------------------------------
         end
