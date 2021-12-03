@@ -381,22 +381,18 @@ classdef Robot
             
             v1 = robot.dh_parameters(2,1); %330.3
             v2 = robot.dh_parameters(3,1); %254.1
+            d = 130;
             thetas = zeros(robot.dof, 1);
             
             % --------------- BEGIN STUDENT SECTION ----------------------------------
-            num1 = atan2(goal_position(2),goal_position(1))
-            num2 = (121.05/sqrt(goal_position(1)^2 + goal_position(2)^2))
             thetas(1) = atan2(goal_position(2),goal_position(1)) - ...
-                       asin(121.05/sqrt(goal_position(1)^2 + goal_position(2)^2));
+                       asin(d/sqrt(goal_position(1)^2 + goal_position(2)^2));
             
-            num4 = goal_position(2) - 121.05 * cos(thetas(1))
-            num5 = thetas(1)
-            num6 = cos(thetas(1))
-            xrr = sqrt((goal_position(2) - 121.05 * cos(thetas(1)))^2 + ...
-                    ((goal_position(1)) + 121.05 * sin(thetas(1)))^2)
-            zrr = goal_position(3) - 56.05 + 74.05 + 139.7
+            xrr = sqrt((goal_position(2) - d * cos(thetas(1)))^2 + ...
+                    ((goal_position(1)) + d * sin(thetas(1)))^2);
+            zrr = goal_position(3) - robot.dh_parameters(1,3) + robot.dh_parameters(5,1);
 
-            num3 = (xrr^2 + zrr^2 - v1^2 - v2^2)/(2*v1*v2)
+            num3 = (xrr^2 + zrr^2 - v1^2 - v2^2)/(2*v1*v2);
 %             num1 = ((goal_position(3) + 157.7)^2 + goal_position(1)^2 - v1^2 - v2^2)/(2*v1*v2)
             thetas(3) = -acos(num3); % negative because elbow always down
             thetas(2) = atan2(zrr,xrr) - atan2(v2*sin(thetas(3)),(v1+v2*cos(thetas(3))));

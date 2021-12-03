@@ -77,10 +77,6 @@ gains.jenga_gains.positionFF = [0 .05 .05 0 0];
 %gains.jenga_gains.torqueKd = [3 3 3 3 3];
 %gains.jenga_gains.torqueKd = [.01 .01 .01 .01 .01];
 robot.set('gains', gains.jenga_gains);
-while(~isequal(robot.get('gains').positionKi, gains.jenga_gains.positionKi)) 
-	robot.set('gains', gains.jenga_gains);
-	pause(.1);
-end
 robot.get('gains')
 
 %% Connect to gripper, and initialize some settings properly
@@ -102,6 +98,9 @@ logFile = robot.startLog('file', fullfile(currentDir, 'robot_data'));
 %% command frequency, in Hz
 frequency = 100;
 
+% We define our "position 1", "position 2", and a "midpoint" waypoints
+% here. We found these points by calling robot.getNextFeedback() from the MATLAB
+% command line, and tweaking the results as necessary.
 % We define our "position 1", "position 2", and a "midpoint" waypoints
 % here. We found these points by calling robot.getNextFeedback() from the MATLAB
 % command line, and tweaking the results as necessary.
@@ -131,7 +130,6 @@ s2r1 = offsetWaypoint(s2r1, 3, 1);
 %s2r1 = offsetWaypoint(s2r1, .5, 2);
 position_2 = [s1r1', middle1',s2r1', ...
     s1r2', middle2', s2r2'];
-%[0.951 0.7142 1.649 0.9488 0.1436]
 
 % We keep the last joint equal to the first to ensure the block does not rotate
 % as we move. Note this joint points in the opposite direction as the base. For
@@ -140,9 +138,9 @@ position_1(5) = position_1(1);
 position_2(5,1) = position_2(1,1) + pi/2;
 position_2(5,2) = position_2(1,2) + pi/2;
 position_2(5,3) = position_2(1,3) + pi/2;
-position_2(5,4) = position_2(1,4);% + pi/2;
-position_2(5,5) = position_2(1,5);% + pi/2;
-position_2(5,6) = position_2(1,6);% + pi/2;
+position_2(5,4) = position_2(1,4);
+position_2(5,5) = position_2(1,5);
+position_2(5,6) = position_2(1,6);
 
 % Add a midpoint for the trajectory, so the robot does not just drag the piece
 % across the table.
@@ -167,40 +165,43 @@ command_trajectory(robot, trajectory, frequency);
 trajectory = trajectory_spline([position_1_approach position_1], [0, 1], frequency);
 command_trajectory(robot, trajectory, frequency);
 
-for ind = 1:6
-    block_pos = position_2(:,ind);
-    approach_pos = position_2_approach;
-    if (ind > 0)
+layerH = 14;
+for stack = 1:3
+    for ind = 1:6
+        block_pos = position_2(:,ind);
+        if (stack > 1)
+            block_pos = offsetWaypoint(position_2(:,ind), (stack-1)*2 * layerH, 3)';
+        end
         approach_pos = offsetWaypoint(block_pos, 40, 3)';
+    
+        % %% Pick up the object at position 1.  We pause to let the robot stabilize before
+        % %% moving. NOTE: If you pause more than the length of the command lifetime you
+        % %% set above, then the robot "goes limp" because the previous position and/or
+        % %% velocity and torque commands "expire".
+        pick(gripper);
+        pause(0.75);
+    
+        %% Move to the second waypoint over 4 seconds, with special "retract" and
+        %% "approach" motions that are done more slowly.
+        trajectory = trajectory_spline([position_1 position_1_approach], [0, 1], frequency);
+        command_trajectory(robot, trajectory, frequency);
+        trajectory = trajectory_spline([position_1_approach midpoint approach_pos], [0, 1, 2], frequency);
+        command_trajectory(robot, trajectory, frequency);
+        trajectory = trajectory_spline([approach_pos block_pos], [0, 1], frequency);
+        command_trajectory(robot, trajectory, frequency);
+        
+        % %% Place the object
+        place(gripper);
+        pause(0.75);
+        
+        %% Move back to position 1.
+        trajectory = trajectory_spline([block_pos approach_pos], [0, 1], frequency);
+        command_trajectory(robot, trajectory, frequency);
+        trajectory = trajectory_spline([approach_pos midpoint position_1_approach], [0, 1, 2], frequency);
+        command_trajectory(robot, trajectory, frequency);
+        trajectory = trajectory_spline([position_1_approach position_1], [0, 1], frequency);
+        command_trajectory(robot, trajectory, frequency);
     end
-
-    % %% Pick up the object at position 1.  We pause to let the robot stabilize before
-    % %% moving. NOTE: If you pause more than the length of the command lifetime you
-    % %% set above, then the robot "goes limp" because the previous position and/or
-    % %% velocity and torque commands "expire".
-    pick(gripper);
-    pause(0.75);
-
-    %% Move to the second waypoint over 4 seconds, with special "retract" and
-    %% "approach" motions that are done more slowly.
-    trajectory = trajectory_spline([position_1 position_1_approach], [0, 1], frequency);
-    command_trajectory(robot, trajectory, frequency);
-    trajectory = trajectory_spline([position_1_approach midpoint approach_pos], [0, 1, 2], frequency);
-    command_trajectory(robot, trajectory, frequency);
-    trajectory = trajectory_spline([approach_pos position_2(:,ind)], [0, 1], frequency);
-    command_trajectory(robot, trajectory, frequency);
-    
-    % %% Place the object
-    place(gripper);
-    pause(0.75);
-    
-    %% Move back to position 1.
-    trajectory = trajectory_spline([position_2(:,ind) approach_pos], [0, 1], frequency);
-    command_trajectory(robot, trajectory, frequency);
-    trajectory = trajectory_spline([approach_pos midpoint position_1_approach], [0, 1, 2], frequency);
-    command_trajectory(robot, trajectory, frequency);
-    trajectory = trajectory_spline([position_1_approach position_1], [0, 1], frequency);
-    command_trajectory(robot, trajectory, frequency);
 end
 
 %% Stop logging, and plot results

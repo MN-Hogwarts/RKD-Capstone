@@ -63,7 +63,7 @@ hebilog = HebiUtils.convertGroupLog(fullfile(currentDir, 'robot_data.hebilog'));
 %     torque = hebilog.torque;
 %end
 %          theta1   theta2 ...
-position = [0.9772 0.7927 1.623 0.9488 0.1436];
+position = [0.914 0.7607 1.674 0.904 0.1386];
 cmd = CommandStruct();
 cmd.position = position
 robot.set(cmd);

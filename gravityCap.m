@@ -46,13 +46,13 @@ transJ_joint3 = transpose(J_joint3);
 transJ_joint4 = transpose(J_joint4);
 transJ_joint5 = transpose(J_joint5);
 
-F_link1 = [0; m_link_1*9.8; 0; 0; 0; 0];
-F_link2 = [0; m_link_2*9.8; 0; 0; 0; 0];
-F_joint1 = [0; m_joint_1*9.8; 0; 0; 0; 0];
-F_joint2 = [0; m_joint_2*9.8; 0; 0; 0; 0];
-F_joint3 = [0; m_joint_3*9.8; 0; 0; 0; 0];
-F_joint4 = [0; m_joint_4*9.8; 0; 0; 0; 0];
-F_joint5 = [0; m_joint_5*9.8; 0; 0; 0; 0];
+F_link1 = [0; 0; m_link_1*9.8; 0; 0; 0];
+F_link2 = [0; 0; m_link_2*9.8; 0; 0; 0];
+F_joint1 = [0; 0; m_joint_1*9.8; 0; 0; 0];
+F_joint2 = [0; 0; m_joint_2*9.8; 0; 0; 0];
+F_joint3 = [0; 0; m_joint_3*9.8; 0; 0; 0];
+F_joint4 = [0; 0; m_joint_4*9.8; 0; 0; 0];
+F_joint5 = [0; 0; m_joint_5*9.8; 0; 0; 0];
 
 torqueLink1 = (transJ_link1 * F_link1);
 torqueLink2 = (transJ_link2 * F_link2);
