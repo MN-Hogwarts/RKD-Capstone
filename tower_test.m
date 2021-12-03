@@ -24,7 +24,7 @@ function [] = command_trajectory(robot, trajectory, frequency)
     % Send command to the robot (the transposes on the trajectory
     % points turns column into row vector for commands).
     cmd.position = trajectory(:,i)';
-    %cmd.velocity = trajectory_vel(:,i)' * frequency;
+    cmd.velocity = trajectory_vel(:,i)' * frequency;
     %gravTorques = gravityCap(trajectory(:,i));
     %cmd.torque = transpose(gravTorques); 
     robot.set(cmd);
@@ -35,7 +35,7 @@ function [] = command_trajectory(robot, trajectory, frequency)
 
   % Send the last point, with a goal of zero velocity.
   cmd.position = trajectory(:,end)';
-  %cmd.velocity = zeros(1, size(trajectory, 1));
+  cmd.velocity = zeros(1, size(trajectory, 1));
   %gravTorques = gravityCap(trajectory(:,end));
   %cmd.torque = transpose(gravTorques); 
   robot.set(cmd);
@@ -71,32 +71,26 @@ robot.setCommandLifetime(1);
 gains = load('jenga_gains.mat');
 gains.jenga_gains.positionKp = [1 4 5 2 2];
 gains.jenga_gains.positionKi = [0 0 0 0 0];
-gains.jenga_gains.positionKd = [0.01 0.01 0.01 0 .01];
+gains.jenga_gains.positionKd = [0.05 0.01 0.05 0 .01];
 gains.jenga_gains.positionFF = [0 .05 .05 0 0];
+gains.jenga_gains.velocityKp = [.01 .01 .01 .01 .01];
+% gains.jenga_gains.velocityKi = [0 0 0 0 0];
+% gains.jenga_gains.velocityKd = [0.01 0.01 0.01 0 .01];
+% gains.jenga_gains.velocityFF = [0 .05 .05 0 0];
 %gains.jenga_gains.velocityKp = [4 4 4 4 4];
 %gains.jenga_gains.torqueKd = [3 3 3 3 3];
 %gains.jenga_gains.torqueKd = [.01 .01 .01 .01 .01];
 robot.set('gains', gains.jenga_gains);
+while(~isequal(robot.get('gains').positionKi, gains.jenga_gains.positionKi)) 
+	robot.set('gains', gains.jenga_gains);
+	pause(.1);
+end
 robot.get('gains')
 
 %% Connect to gripper, and initialize some settings properly
 gripper = HebiLookup.newGroupFromNames('16384','gripper');
 gripper.setCommandLifetime(0);
 gripper.setFeedbackFrequency(100);
-
-warning('Before continuing, ensure no persons or objects are within range of the robot!\nAlso, ensure that you are ready to press "ctrl-c" if the robot does not act as expected!');
-disp('');
-input('Once ready, press "enter" to continue...','s');
-
-%% Get initial position
-fbk = robot.getNextFeedback();
-initial_thetas = fbk.position'; % (The transpose turns the feedback into a column vector)
-
-%% Start logging
-currentDir = fileparts(mfilename('fullpath'));
-logFile = robot.startLog('file', fullfile(currentDir, 'robot_data'));
-%% command frequency, in Hz
-frequency = 100;
 
 % We define our "position 1", "position 2", and a "midpoint" waypoints
 % here. We found these points by calling robot.getNextFeedback() from the MATLAB
@@ -112,22 +106,26 @@ position_1 = [0.1173 0.7194 1.0171 1.2449 -0.8377]';
 %position_2 = [[.999 0.7031 1.549 1.0382 0.1418]', [0.9630 0.7548 1.655 1.0642 0.1382]',[0.9109 0.7847 1.6967 1.0336 0.1386]'];
 %position_2 = [[0.998 0.7894 1.6878 0.8023 0.1408]', [0.9384 0.7785 1.6007 0.7661 0.1408]',[0.8795 0.7208 1.5225 0.7804 0.1407]'];
 middle2 = [0.9334    0.7747    1.6609    0.9482    0.1205];
+middle2(4) = middle2(2) - middle2(3) + 1.9; % Angle pointing down: -1.9ish?
 middle2 = offsetWaypoint(middle2, 7, 3);
-middle2 = offsetWaypoint(middle2, 10, 2);
-middle2 = offsetWaypoint(middle2, 2, 1);
-s1r2 = offsetWaypoint(middle2, -26, 1);
+middle2 = offsetWaypoint(middle2, 5, 2);
+%middle2 = offsetWaypoint(middle2, 2, 1);
+s1r2 = offsetWaypoint(middle2, -28, 1);
 s1r2 = offsetWaypoint(s1r2, -7, 2);
 s2r2 = offsetWaypoint(middle2, 28, 1);
 s2r2 = offsetWaypoint(s2r2, 7, 2);
 middle1 = [0.9671 0.756 1.658 1.066 0.1382];
+middle1(5) = middle1(5) - 0.15;
+middle1(4) = middle1(2) - middle1(3) + 1.9;
 middle1 = offsetWaypoint(middle1, 5, 1);
-middle1 = offsetWaypoint(middle1, -1, 2);
-middle1 = offsetWaypoint(middle1, 4, 3);
-s1r1 = offsetWaypoint(middle1, 18, 2);
+middle1 = offsetWaypoint(middle1, 2, 2);
+middle1 = offsetWaypoint(middle1, 3, 3);
+s1r1 = offsetWaypoint(middle1, 19, 2);
 s1r1 = offsetWaypoint(s1r1, -1, 1);
-s2r1 = offsetWaypoint(middle1, -18, 2);
-s2r1 = offsetWaypoint(s2r1, 3, 1);
-%s2r1 = offsetWaypoint(s2r1, .5, 2);
+s1r1 = offsetWaypoint(s1r1, 2, 3);
+s2r1 = offsetWaypoint(middle1, -17, 2);
+s2r1 = offsetWaypoint(s2r1, 5, 1);
+s2r1 = offsetWaypoint(s2r1, -2, 3);
 position_2 = [s1r1', middle1',s2r1', ...
     s1r2', middle2', s2r2'];
 
@@ -157,11 +155,26 @@ position_2_approach = [0.9149 0.8638 1.637 0.9679 0.1107]';
 position_1_approach(5) = position_1(5);
 position_2_approach(5) = position_2(5,1);
 
+%% Get initial position
+fbk = robot.getNextFeedback();
+initial_thetas = fbk.position'; % (The transpose turns the feedback into a column vector)
+
+%% Start logging
+currentDir = fileparts(mfilename('fullpath'));
+logFile = robot.startLog('file', fullfile(currentDir, 'robot_data'));
+%% command frequency, in Hz
+frequency = 100;
+
+warning('Before continuing, ensure no persons or objects are within range of the robot!\nAlso, ensure that you are ready to press "ctrl-c" if the robot does not act as expected!');
+disp('');
+input('Once ready, press "enter" to continue...','s');
+
 %% Moves the robot from the initial position to the first waypoint over 4
 %% seconds.  We break this into 3 seconds to make most of the motion, and 1 for
 %% the final approach.
-trajectory = trajectory_spline([initial_thetas midpoint position_1_approach], [0, 2, 3], frequency);
+trajectory = trajectory_spline([initial_thetas midpoint position_1_approach], [0, .5, 1], frequency);
 command_trajectory(robot, trajectory, frequency);
+pick(gripper);
 trajectory = trajectory_spline([position_1_approach position_1], [0, 1], frequency);
 command_trajectory(robot, trajectory, frequency);
 
@@ -172,20 +185,33 @@ for stack = 1:3
         if (stack > 1)
             block_pos = offsetWaypoint(position_2(:,ind), (stack-1)*2 * layerH, 3)';
         end
-        approach_pos = offsetWaypoint(block_pos, 40, 3)';
+%         if (stack == 2 && ind <= 3) % row 3
+%             block_pos = offsetWaypoint(block_pos, 4, 1)';
+%             if (ind == 3) % block 3
+%                 block_pos = offsetWaypoint(block_pos, -7, 2)';
+%             end
+%         end
+%         if (stack > 1 && ind == 3) % row 3 and 5, block 3
+%             block_pos = offsetWaypoint(block_pos, 2, 1)';
+%         end
+        if (stack == 1 && ind == 1) % row 1, block 1
+            block_pos = offsetWaypoint(block_pos, 4, 1)';
+        end
+        %approach_pos = offsetWaypoint(block_pos, 40, 3)';
+        approach_pos = block_pos; approach_pos(2) = approach_pos(2) + 0.1;
     
         % %% Pick up the object at position 1.  We pause to let the robot stabilize before
         % %% moving. NOTE: If you pause more than the length of the command lifetime you
         % %% set above, then the robot "goes limp" because the previous position and/or
         % %% velocity and torque commands "expire".
-        pick(gripper);
-        pause(0.75);
+%         pick(gripper);
+%         pause(0.75);
     
         %% Move to the second waypoint over 4 seconds, with special "retract" and
         %% "approach" motions that are done more slowly.
         trajectory = trajectory_spline([position_1 position_1_approach], [0, 1], frequency);
         command_trajectory(robot, trajectory, frequency);
-        trajectory = trajectory_spline([position_1_approach midpoint approach_pos], [0, 1, 2], frequency);
+        trajectory = trajectory_spline([position_1_approach midpoint approach_pos], [0, .5, 1.5], frequency);
         command_trajectory(robot, trajectory, frequency);
         trajectory = trajectory_spline([approach_pos block_pos], [0, 1], frequency);
         command_trajectory(robot, trajectory, frequency);
@@ -194,13 +220,21 @@ for stack = 1:3
         place(gripper);
         pause(0.75);
         
-        %% Move back to position 1.
         trajectory = trajectory_spline([block_pos approach_pos], [0, 1], frequency);
         command_trajectory(robot, trajectory, frequency);
-        trajectory = trajectory_spline([approach_pos midpoint position_1_approach], [0, 1, 2], frequency);
-        command_trajectory(robot, trajectory, frequency);
-        trajectory = trajectory_spline([position_1_approach position_1], [0, 1], frequency);
-        command_trajectory(robot, trajectory, frequency);
+        
+        if (stack ~= 3 || ind ~= 6) % Not the last block
+            %% Move back to position 1.
+            trajectory = trajectory_spline([approach_pos midpoint position_1_approach], [0, .5, 1.5], frequency);
+            command_trajectory(robot, trajectory, frequency);
+            pick(gripper);
+            trajectory = trajectory_spline([position_1_approach position_1], [0, 1], frequency);
+            command_trajectory(robot, trajectory, frequency);
+        else % After last block
+            midpoint(1) = midpoint(1) - .3;
+            trajectory = trajectory_spline([approach_pos midpoint], [0, .5], frequency);
+            command_trajectory(robot, trajectory, frequency);            
+        end
     end
 end
 
